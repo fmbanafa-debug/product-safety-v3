@@ -33,6 +33,10 @@
         .sortable:hover {
             color: #4b5563;
         }
+        .dropzone-active {
+            border: 2px dashed #3b82f6;
+            background-color: #eff6ff;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -84,7 +88,7 @@
         </div>
 
         <!-- Bulk Upload Section -->
-        <div id="bulk-upload-section" class="bg-white p-6 rounded-lg shadow-md mb-8">
+        <div id="bulk-upload-section" class="bg-white p-6 rounded-lg shadow-md mb-8 transition-colors duration-200">
             <h2 class="text-2xl font-semibold mb-6 text-gray-800 border-b pb-3">Bulk Upload Records</h2>
             <p class="text-gray-600 mb-4">Upload a CSV file with columns: "productName", "activeSubstance", "signal", "category", "outcome".</p>
             <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
@@ -198,6 +202,7 @@
         const uploadStatus = document.getElementById('upload-status');
         const messageContainer = document.getElementById('message-container');
         const loadingSpinner = document.getElementById('loading-spinner');
+        const dropZone = document.getElementById('bulk-upload-section');
         const filters = {
             product: document.getElementById('filter-product'),
             substance: document.getElementById('filter-substance'),
@@ -546,8 +551,10 @@
         clearFiltersBtn.addEventListener('click', clearFilters);
         exportBtn.addEventListener('click', exportToCSV);
 
-        // Bulk upload functionality
-        fileInput.addEventListener('change', () => {
+        /**
+         * Reusable function to update the bulk upload button state
+         */
+        function handleFileChange() {
             if (fileInput.files.length > 0) {
                 bulkUploadBtn.disabled = false;
                 bulkUploadBtn.classList.remove('bg-blue-400', 'cursor-not-allowed');
@@ -557,8 +564,40 @@
                 bulkUploadBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                 bulkUploadBtn.classList.add('bg-blue-400', 'cursor-not-allowed');
             }
-        });
+        }
+
+        // Bulk upload functionality - Listen for file selection
+        fileInput.addEventListener('change', handleFileChange);
         
+        // --- Drag and Drop File Upload ---
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Prevent browser from opening file
+            dropZone.classList.add('dropzone-active');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dropzone-active');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dropzone-active');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                // Check if it's a CSV
+                if (files[0].name.endsWith('.csv')) {
+                    fileInput.files = files; // This sets the file on the input
+                    // Manually trigger the 'change' event logic
+                    handleFileChange();
+                } else {
+                    showMessage("Please drop a .csv file.", "error");
+                }
+            }
+        });
+        // --- End Drag and Drop ---
+
+
         // A helper function to parse CSV lines, correctly handling commas inside quotes.
         function parseCsvLine(line) {
             const values = [];
@@ -651,7 +690,7 @@
                     uploadStatus.textContent = "Upload failed. Check console for details.";
                     showMessage("Bulk upload failed. Please try again.", "error");
                 } finally {
-                    bulkUploadBtn.disabled = false;
+                    bulkUploadBtn.disabled = true; // <-- FIX: Button should be disabled after upload
                     bulkUploadBtn.textContent = 'Upload';
                     bulkUploadBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                     bulkUploadBtn.classList.add('bg-blue-400', 'cursor-not-allowed');
@@ -694,6 +733,7 @@
     </script>
 </body>
 </html>
+
 
 
 
